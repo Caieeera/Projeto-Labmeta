@@ -16,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-camera.position.z = 15;
+camera.position.z = 20;
 
 // Luz
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -24,7 +24,7 @@ light.position.set(0, 10, 10);
 scene.add(light);
 
 // =============================
-// 🧱 GRID (10x20)
+// 🧱 GRID
 // =============================
 
 const COLS = 10;
@@ -33,32 +33,40 @@ const ROWS = 20;
 let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 
 // =============================
-// 🎯 PEÇA ATUAL
+// 🎨 CORES
+// =============================
+
+const COLORS = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+
+// =============================
+// 🧩 FORMAS
+// =============================
+
+const SHAPES = [
+  [[0,0],[1,0],[-1,0],[2,0]], // I
+  [[0,0],[1,0],[0,1],[1,1]], // O
+  [[0,0],[1,0],[-1,0],[0,1]], // T
+  [[0,0],[1,0],[-1,0],[-1,1]] // L
+];
+
+// =============================
+// 🎯 PEÇA
 // =============================
 
 let currentPiece = null;
 
-// formato T
-const T_SHAPE = [
-  [0, 0],
-  [1, 0],
-  [-1, 0],
-  [0, 1]
-];
-
 // =============================
-// 🧱 CRIAR BLOCO VISUAL
+// 🧱 BLOCO
 // =============================
 
-function createBlock(x, y) {
+function createBlock(x, y, color) {
   const geometry = new THREE.BoxGeometry();
-  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+  const material = new THREE.MeshStandardMaterial({ color });
 
   const cube = new THREE.Mesh(geometry, material);
-
   cube.position.set(x, y, 0);
-  scene.add(cube);
 
+  scene.add(cube);
   return cube;
 }
 
@@ -67,10 +75,14 @@ function createBlock(x, y) {
 // =============================
 
 function createPiece() {
+  const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
   currentPiece = {
     x: Math.floor(COLS / 2),
     y: ROWS - 2,
-    shape: T_SHAPE,
+    shape: JSON.parse(JSON.stringify(shape)),
+    color,
     blocks: []
   };
 
@@ -78,11 +90,10 @@ function createPiece() {
 }
 
 // =============================
-// 🔄 ATUALIZAR VISUAL DA PEÇA
+// 🔄 ATUALIZAR VISUAL
 // =============================
 
 function updatePieceMesh() {
-  // remove blocos antigos
   currentPiece.blocks.forEach(b => scene.remove(b));
   currentPiece.blocks = [];
 
@@ -90,17 +101,17 @@ function updatePieceMesh() {
     const x = currentPiece.x + dx;
     const y = currentPiece.y + dy;
 
-    const block = createBlock(x - COLS / 2, y - ROWS / 2);
+    const block = createBlock(x - COLS/2, y - ROWS/2, currentPiece.color);
     currentPiece.blocks.push(block);
   });
 }
 
 // =============================
-// 🚧 COLISÃO COM GRID
+// 🚧 COLISÃO
 // =============================
 
-function checkCollision(offsetX, offsetY) {
-  return currentPiece.shape.some(([dx, dy]) => {
+function checkCollision(offsetX, offsetY, shape = currentPiece.shape) {
+  return shape.some(([dx, dy]) => {
     const x = currentPiece.x + dx + offsetX;
     const y = currentPiece.y + dy + offsetY;
 
@@ -108,13 +119,26 @@ function checkCollision(offsetX, offsetY) {
       x < 0 ||
       x >= COLS ||
       y < 0 ||
-      grid[y][x] === 1
+      grid[y]?.[x]
     );
   });
 }
 
 // =============================
-// 🧲 FIXAR PEÇA
+// 🔄 ROTAÇÃO
+// =============================
+
+function rotate() {
+  const newShape = currentPiece.shape.map(([x, y]) => [-y, x]);
+
+  if (!checkCollision(0, 0, newShape)) {
+    currentPiece.shape = newShape;
+    updatePieceMesh();
+  }
+}
+
+// =============================
+// 🧲 FIXAR
 // =============================
 
 function lockPiece() {
@@ -123,9 +147,48 @@ function lockPiece() {
     const y = currentPiece.y + dy;
 
     if (y >= 0 && y < ROWS && x >= 0 && x < COLS) {
-      grid[y][x] = 1;
+      grid[y][x] = currentPiece.color;
     }
   });
+
+  clearLines();
+}
+
+// =============================
+// 🧹 LIMPAR LINHAS
+// =============================
+
+function clearLines() {
+  for (let y = 0; y < ROWS; y++) {
+    if (grid[y].every(cell => cell !== 0)) {
+      grid.splice(y, 1);
+      grid.push(Array(COLS).fill(0));
+    }
+  }
+}
+
+// =============================
+// 🧱 RENDER GRID
+// =============================
+
+let placedMeshes = [];
+
+function renderGrid() {
+  placedMeshes.forEach(m => scene.remove(m));
+  placedMeshes = [];
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (grid[y][x]) {
+        const block = createBlock(
+          x - COLS/2,
+          y - ROWS/2,
+          grid[y][x]
+        );
+        placedMeshes.push(block);
+      }
+    }
+  }
 }
 
 // =============================
@@ -139,7 +202,9 @@ function moveDown() {
     lockPiece();
     createPiece();
   }
+
   updatePieceMesh();
+  renderGrid();
 }
 
 function moveLeft() {
@@ -164,6 +229,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft") moveLeft();
   if (e.key === "ArrowRight") moveRight();
   if (e.key === "ArrowDown") moveDown();
+  if (e.key === "ArrowUp") rotate();
 });
 
 // =============================
