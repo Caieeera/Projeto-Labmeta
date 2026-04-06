@@ -1,11 +1,28 @@
 body {
   margin: 0;
-  background: #111;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
   color: white;
-  text-align: center;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+#ui {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+
+#score, #lines {
+  margin-top: 10px;
+  font-size: 18px;
 }
 
 canvas {
   display: block;
-  margin: auto;
 }

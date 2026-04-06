@@ -3,6 +3,7 @@
 // =============================
 
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
 
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -12,15 +13,16 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const renderer = new THREE.WebGLRenderer({
-  canvas: document.getElementById("game")
+  canvas: document.getElementById("game"),
+  antialias: true
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-camera.position.z = 20;
+camera.position.set(0, 10, 25);
 
 // Luz
 const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(0, 10, 10);
+light.position.set(10, 20, 10);
 scene.add(light);
 
 // =============================
@@ -33,28 +35,33 @@ const ROWS = 20;
 let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 
 // =============================
+// 🎯 ESTADO
+// =============================
+
+let currentPiece = null;
+let gameOver = false;
+
+// score
+let score = 0;
+let linesCleared = 0;
+let speed = 30;
+
+// =============================
 // 🎨 CORES
 // =============================
 
-const COLORS = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+const COLORS = [0xff4757, 0x2ed573, 0x1e90ff, 0xffa502];
 
 // =============================
 // 🧩 FORMAS
 // =============================
 
 const SHAPES = [
-  [[0,0],[1,0],[-1,0],[2,0]], // I
-  [[0,0],[1,0],[0,1],[1,1]], // O
-  [[0,0],[1,0],[-1,0],[0,1]], // T
-  [[0,0],[1,0],[-1,0],[-1,1]] // L
+  [[0,0],[1,0],[-1,0],[2,0]],
+  [[0,0],[1,0],[0,1],[1,1]],
+  [[0,0],[1,0],[-1,0],[0,1]],
+  [[0,0],[1,0],[-1,0],[-1,1]]
 ];
-
-// =============================
-// 🎯 ESTADO DO JOGO
-// =============================
-
-let currentPiece = null;
-let gameOver = false;
 
 // =============================
 // 🧱 BLOCO
@@ -72,7 +79,7 @@ function createBlock(x, y, color) {
 }
 
 // =============================
-// 🧩 CRIAR PEÇA
+// 🧩 PEÇA
 // =============================
 
 function createPiece() {
@@ -87,7 +94,6 @@ function createPiece() {
     blocks: []
   };
 
-  // 💥 GAME OVER
   if (checkCollision(0, 0, currentPiece.shape)) {
     gameOver = true;
     showGameOver();
@@ -98,7 +104,7 @@ function createPiece() {
 }
 
 // =============================
-// 🔄 ATUALIZAR VISUAL
+// 🔄 VISUAL
 // =============================
 
 function updatePieceMesh() {
@@ -163,16 +169,61 @@ function lockPiece() {
 }
 
 // =============================
-// 🧹 LIMPAR LINHAS
+// 🧹 LINHAS + SCORE
 // =============================
 
+
 function clearLines() {
+  let fullLines = [];
+
   for (let y = 0; y < ROWS; y++) {
     if (grid[y].every(cell => cell !== 0)) {
-      grid.splice(y, 1);
-      grid.push(Array(COLS).fill(0));
+      fullLines.push(y);
     }
   }
+
+  if (fullLines.length === 0) return;
+
+  // 🔥 Efeito visual (piscar)
+  fullLines.forEach(y => {
+    for (let x = 0; x < COLS; x++) {
+      if (grid[y][x]) {
+        const block = createBlock(
+          x - COLS/2,
+          y - ROWS/2,
+          0xffffff // branco (flash)
+        );
+
+        setTimeout(() => scene.remove(block), 100);
+      }
+    }
+  });
+
+  // 💥 Remover linhas depois do efeito
+  setTimeout(() => {
+    fullLines.forEach(y => {
+      grid.splice(y, 1);
+      grid.push(Array(COLS).fill(0));
+    });
+
+    const lines = fullLines.length;
+
+    // pontuação estilo Tetris
+    const pointsTable = [0, 100, 300, 500, 800];
+    const points = pointsTable[lines];
+
+    score += points;
+    linesCleared += lines;
+
+    speed = Math.max(10, speed - 1);
+
+    updateUI();
+    renderGrid();
+
+    // ✨ popup
+    showScorePopup(points);
+
+  }, 120);
 }
 
 // =============================
@@ -236,9 +287,7 @@ function moveRight() {
 // =============================
 
 document.addEventListener("keydown", (e) => {
-  if (gameOver && e.key === "r") {
-    location.reload();
-  }
+  if (gameOver && e.key === "r") location.reload();
 
   if (gameOver) return;
 
@@ -247,6 +296,15 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowDown") moveDown();
   if (e.key === "ArrowUp") rotate();
 });
+
+// =============================
+// 🧾 UI
+// =============================
+
+function updateUI() {
+  document.getElementById("score").innerText = "Score: " + score;
+  document.getElementById("lines").innerText = "Linhas: " + linesCleared;
+}
 
 // =============================
 // 🔄 LOOP
@@ -261,7 +319,7 @@ function animate() {
 
   dropCounter++;
 
-  if (dropCounter > 30) {
+  if (dropCounter > speed) {
     moveDown();
     dropCounter = 0;
   }
@@ -270,7 +328,7 @@ function animate() {
 }
 
 // =============================
-// 🛑 GAME OVER UI
+// 🛑 GAME OVER
 // =============================
 
 function showGameOver() {
@@ -283,7 +341,6 @@ function showGameOver() {
   div.style.transform = "translate(-50%, -50%)";
   div.style.fontSize = "40px";
   div.style.color = "red";
-  div.style.fontWeight = "bold";
 
   document.body.appendChild(div);
 }
@@ -292,5 +349,6 @@ function showGameOver() {
 // ▶️ START
 // =============================
 
+updateUI();
 createPiece();
 animate();
