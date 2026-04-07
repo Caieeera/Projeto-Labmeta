@@ -352,3 +352,4 @@ function showGameOver() {
 updateUI();
 createPiece();
 animate();
+//versao final
