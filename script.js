@@ -1,10 +1,10 @@
 // =============================
-// CENÁRIO DO JOGO
+// CENÁRIO DO JOG
 // =============================
 // Cria o espaço 3D onde o jogo vai acontecer
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111); // fundo preto
+scene.background = new THREE.Color(0x111111);// fundo preto
 
 // Configura a câmera para ver o campo de jogo em perspectiva
 const camera = new THREE.PerspectiveCamera(
@@ -28,7 +28,7 @@ const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 20, 10);
 scene.add(light);
 
-// =============================
+// ======================
 // CAMPO DE JOGO (GRID)
 // =============================
 // Define o tamanho do campo onde os blocos caem e se encaixam
@@ -66,7 +66,7 @@ const COLORS = [0xff4757, 0x2ed573, 0x1e90ff, 0xffa502]; // vermelho, verde, azu
 // Cada forma é descrita pelas posições relativas dos blocos em relação ao centro
 
 const SHAPES = [
-  [[0,0],[1,0],[-1,0],[2,0]],   // peça retilínea
+   [[0,0],[1,0],[-1,0],[2,0]],   // peça retilínea
   [[0,0],[1,0],[0,1],[1,1]],    // bloquinho quadrado
   [[0,0],[1,0],[-1,0],[0,1]],   // peça com formato de T
   [[0,0],[1,0],[-1,0],[-1,1]]   // peça em forma de Z
@@ -136,7 +136,7 @@ function updatePieceMesh() {
 
   // Desenha cada bloco da peça na posição correta
   currentPiece.shape.forEach(([dx, dy]) => {
-    const x = currentPiece.x + dx;
+      const x = currentPiece.x + dx;
     const y = currentPiece.y + dy;
 
     // Centraliza o campo na tela
@@ -158,10 +158,10 @@ function checkCollision(offsetX, offsetY, shape = currentPiece.shape) {
 
     // Verifica se saiu dos limites ou bateu em um bloco existente
     return (
-      x < 0 ||              // saiu pela esquerda
-      x >= COLS ||          // saiu pela direita
-      y < 0 ||              // saiu por baixo
-      grid[y]?.[x]          // bateu em outro bloco
+        x < 0 ||              // saiu pela esquerda
+          x >= COLS ||          // saiu pela direita
+        y < 0 ||              // saiu por baixo
+        grid[y]?.[x]          // bateu em outro bloco
     );
   });
 }
